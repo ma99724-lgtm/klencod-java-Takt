@@ -374,6 +374,7 @@ public class MainActivity extends Activity {
                 values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
                 values.put(MediaStore.Images.Media.RELATIVE_PATH,
                         Environment.DIRECTORY_PICTURES + "/KlencodDrawings");
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
 
                 Uri uri = getContentResolver().insert(
                         MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
@@ -390,6 +391,11 @@ public class MainActivity extends Activity {
                         return;
                     }
                     bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+                    out.flush();
+
+                    ContentValues update = new ContentValues();
+                    update.put(MediaStore.Images.Media.IS_PENDING, 0);
+                    getContentResolver().update(uri, update, null, null);
                 } finally {
                     bitmap.recycle();
                 }
