@@ -44,6 +44,49 @@ import java.util.Locale;
  */
 public class MainActivity extends Activity {
 
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((drawingView == null) ? 0 : drawingView.hashCode());
+        result = prime * result + currentColorIndex;
+        result = prime * result + currentSizeIndex;
+        result = prime * result + ((colorButtons == null) ? 0 : colorButtons.hashCode());
+        result = prime * result + ((sizeButtons == null) ? 0 : sizeButtons.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        MainActivity other = (MainActivity) obj;
+        if (drawingView == null) {
+            if (other.drawingView != null)
+                return false;
+        } else if (!drawingView.equals(other.drawingView))
+            return false;
+        if (currentColorIndex != other.currentColorIndex)
+            return false;
+        if (currentSizeIndex != other.currentSizeIndex)
+            return false;
+        if (colorButtons == null) {
+            if (other.colorButtons != null)
+                return false;
+        } else if (!colorButtons.equals(other.colorButtons))
+            return false;
+        if (sizeButtons == null) {
+            if (other.sizeButtons != null)
+                return false;
+        } else if (!sizeButtons.equals(other.sizeButtons))
+            return false;
+        return true;
+    }
+
     // ============================================================
     // الألوان الأساسية (نفس ألوان KlencodIDE)
     // ============================================================
@@ -310,6 +353,11 @@ public class MainActivity extends Activity {
     // ============================================================
     private void saveImage() {
         try {
+            if (!drawingView.hasDrawing()) {
+                Toast.makeText(this, "لا يوجد شيء لحفظه", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             Bitmap bitmap = drawingView.exportBitmap();
             if (bitmap == null) {
                 Toast.makeText(this, "لا يوجد شيء لحفظه", Toast.LENGTH_SHORT).show();
@@ -335,10 +383,16 @@ public class MainActivity extends Activity {
                     return;
                 }
 
-                OutputStream out = getContentResolver().openOutputStream(uri);
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-                if (out != null) out.close();
-                bitmap.recycle();
+                try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                    if (out == null) {
+                        getContentResolver().delete(uri, null, null);
+                        Toast.makeText(this, "تعذر فتح ملف الصورة", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+                } finally {
+                    bitmap.recycle();
+                }
 
                 Toast.makeText(this,
                         "✅ تم حفظ الصورة في:\nPictures/KlencodDrawings/" + fileName,
@@ -387,6 +441,10 @@ public class MainActivity extends Activity {
             this.currentStrokeWidth = width;
         }
 
+        public boolean hasDrawing() {
+            return !strokes.isEmpty() || currentStroke != null;
+        }
+
         public void clear() {
             strokes.clear();
            
@@ -395,6 +453,11 @@ public class MainActivity extends Activity {
         }
 
         public void undo() {
+            if (currentStroke != null) {
+                currentStroke = null;
+                invalidate();
+                return;
+            }
             if (strokes.isEmpty()) return;
             strokes.remove(strokes.size() - 1);
             invalidate();
